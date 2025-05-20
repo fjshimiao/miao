@@ -1,0 +1,188 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>芳，愿与你携手共白头</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: #fff0f5;
+      text-align: center;
+    }
+
+    h1 {
+      margin-top: 50px;
+      color: #d63384;
+      font-size: 2.5em;
+    }
+
+    .heart {
+      margin-top: 20px;
+      margin-bottom: 40px;
+      width: 100px;
+      height: 90px;
+      position: relative;
+      margin: 40px auto;
+      animation: beat 1s infinite;
+    }
+
+    .heart::before,
+    .heart::after {
+      content: "";
+      position: absolute;
+      width: 100px;
+      height: 90px;
+      background: pink;
+      border-radius: 50px 50px 0 0;
+      top: 0;
+      left: 0;
+    }
+
+    .heart::after {
+      left: 50px;
+    }
+
+    .heart::before {
+      transform: rotate(-45deg);
+      transform-origin: bottom right;
+    }
+
+    .heart::after {
+      transform: rotate(45deg);
+      transform-origin: bottom left;
+    }
+
+    @keyframes beat {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.1);
+      }
+    }
+
+    .message-board {
+      margin-top: 30px;
+      background: white;
+      padding: 20px;
+      width: 90%;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .message-board h2 {
+      color: #d63384;
+    }
+
+    input, textarea {
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #ff69b4;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      font-size: 1em;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #ff85c1;
+    }
+
+    .message {
+      text-align: left;
+      margin-top: 20px;
+      border-top: 1px dashed #ccc;
+      padding-top: 10px;
+    }
+
+    .message p {
+      margin: 5px 0;
+    }
+
+    .nickname {
+      color: #c2185b;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>芳，愿与你携手共白头</h1>
+  <div class="heart"></div>
+
+  <div class="message-board">
+    <h2>爱心留言</h2>
+    <input type="text" id="nickname" placeholder="你的昵称" />
+    <textarea id="content" rows="4" placeholder="写下你的留言..."></textarea>
+    <button onclick="sendMessage()">发射爱心</button>
+
+    <div id="messages"></div>
+  </div>
+
+  <!-- Firebase 配置 -->
+  <script type="module">
+    // Firebase SDK
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAwmiAqdGejYqG8IvvoWm-nzqGLyj5TQsE",
+      authDomain: "miao-fang.firebaseapp.com",
+      databaseURL: "https://miao-fang-default-rtdb.firebaseio.com",
+      projectId: "miao-fang",
+      storageBucket: "miao-fang.appspot.com",
+      messagingSenderId: "117680297121",
+      appId: "1:117680297121:web:0c4b8f6e0a4a9c9918cce0",
+      measurementId: "G-YRQ71R9NCR"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const messagesRef = ref(db, "messages");
+
+    function sendMessage() {
+      const nickname = document.getElementById("nickname").value.trim();
+      const content = document.getElementById("content").value.trim();
+
+      if (!nickname || !content) {
+        alert("请填写昵称和留言内容");
+        return;
+      }
+
+      push(messagesRef, {
+        nickname,
+        content,
+        timestamp: Date.now()
+      });
+
+      document.getElementById("content").value = "";
+    }
+
+    onChildAdded(messagesRef, (data) => {
+      const message = data.val();
+      const div = document.createElement("div");
+      div.classList.add("message");
+      div.innerHTML = `
+        <p class="nickname">${message.nickname}</p>
+        <p>${message.content}</p>
+      `;
+      document.getElementById("messages").prepend(div);
+    });
+  </script>
+</body>
+</html>
