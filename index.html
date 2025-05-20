@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>愿得一人心，白头不分离</title>
+  <style>
+    body {
+      display: none;
+      font-family: "Segoe UI", sans-serif;
+      background: #fff0f5;
+      text-align: center;
+    }
+
+    h1 {
+      margin-top: 50px;
+      color: #d63384;
+      font-size: 2.5em;
+    }
+
+    .message-board {
+      margin-top: 30px;
+      background: white;
+      padding: 20px;
+      width: 90%;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .message-board h2 {
+      color: #d63384;
+    }
+
+    input, textarea {
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #ff69b4;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      font-size: 1em;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #ff85c1;
+    }
+
+    .message {
+      text-align: left;
+      margin-top: 20px;
+      border-top: 1px dashed #ccc;
+      padding-top: 10px;
+    }
+
+    .message p {
+      margin: 5px 0;
+    }
+
+    .nickname {
+      color: #c2185b;
+      font-weight: bold;
+    }
+
+    audio {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+
+  <audio id="bgm" autoplay loop controls>
+    <source src="https://lv-sycdn.kuwo.cn/959db6761ae983e96315c4ffbd957858/682c7c19/resource/30106/trackmedia/M500003yuKz81llTnU.mp3" type="audio/mpeg">
+    您的浏览器不支持音频播放。
+  </audio>
+
+  <h1>愿得一人心，白头不分离</h1>
+
+  <div class="message-board">
+    <h2>爱心留言</h2>
+    <input type="text" id="nickname" placeholder="你的昵称" />
+    <textarea id="content" rows="4" placeholder="写下你的留言..."></textarea>
+    <button onclick="sendMessage()">发射爱心</button>
+
+    <div id="messages"></div>
+  </div>
+
+  <script>
+    // 密码保护
+    const correctPassword = "fang520";
+    const userInput = prompt("请输入访问密码：");
+    if (userInput === correctPassword) {
+      document.body.style.display = "block";
+    } else {
+      alert("密码错误！");
+      window.location.href = "about:blank";
+    }
+  </script>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <script>
+    var firebaseConfig = {
+      apiKey: "AIzaSyAwmiAqdGejYqG8IvvoWm-nzqGLyj5TQsE",
+      authDomain: "miao-fang.firebaseapp.com",
+      databaseURL: "https://miao-fang-default-rtdb.firebaseio.com",
+      projectId: "miao-fang",
+      storageBucket: "miao-fang.appspot.com",
+      messagingSenderId: "117680297121",
+      appId: "1:117680297121:web:0c4b8f6e0a4a9c9918cce0",
+      measurementId: "G-YRQ71R9NCR"
+    };
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.database();
+
+    function sendMessage() {
+      var nickname = document.getElementById("nickname").value.trim();
+      var content = document.getElementById("content").value.trim();
+
+      if (!nickname || !content) {
+        alert("请填写昵称和留言内容");
+        return;
+      }
+
+      db.ref("messages").push({
+        nickname: nickname,
+        content: content,
+        timestamp: Date.now()
+      });
+
+      document.getElementById("content").value = "";
+    }
+
+    db.ref("messages").on("child_added", function(snapshot) {
+      var message = snapshot.val();
+      var div = document.createElement("div");
+      div.classList.add("message");
+      var date = new Date(message.timestamp);
+      var timeStr = date.toLocaleString("zh-CN", { hour12: false });
+      div.innerHTML = "<p class='nickname'>" + message.nickname + "</p ><p>" + message.content + "</p ><p style='font-size: 0.9em; color: gray;'>" + timeStr + "</p >";
+      var container = document.getElementById("messages");
+      container.insertBefore(div, container.firstChild);
+    });
+  </script>
+
+</body>
+</html>
