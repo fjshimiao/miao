@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>我们的相册</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fffafc;
+      text-align: center;
+      padding-bottom: 80px;
+    }
+    h1 {
+      color: #d63384;
+      margin: 20px 0;
+    }
+    .upload-section {
+      margin: 20px;
+    }
+    input[type="file"] {
+      margin: 10px 0;
+    }
+    button {
+      background-color: #ff69b4;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background-color: #ff85c1;
+    }
+    .gallery {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 30px;
+    }
+    .photo {
+      position: relative;
+    }
+    .photo img {
+      max-width: 200px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+    .delete-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background-color: rgba(255, 0, 0, 0.7);
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .nav-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background-color: rgba(15, 28, 46, 0.95);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 100;
+      border-top: 1px solid #ffd1dc;
+    }
+    .nav-bar a {
+      color: #ffd1dc;
+      text-decoration: none;
+      font-size: 14px;
+      text-align: center;
+    }
+    .nav-bar a span {
+      display: block;
+      font-size: 10px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <h1>我们的相册</h1>
+  <div class="upload-section">
+    <input type="file" id="fileInput" />
+    <button onclick="uploadImage()">上传</button>
+  </div>
+  <div class="gallery" id="gallery"></div>
+
+  <div class="nav-bar">
+    <a href="index.html">首页<br><span>Home</span></a>
+    <a href="letter.html">信笺<br><span>Letters</span></a>
+    <a href="album.html">相册<br><span>Album</span></a>
+    <a href="guestbook.html">留言<br><span>Guestbook</span></a>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAwmiAqdGejYqG8IvvoWm-nzqGLyj5TQsE",
+      authDomain: "miao-fang.firebaseapp.com",
+      projectId: "miao-fang",
+      storageBucket: "miao-fang.appspot.com",
+      messagingSenderId: "117680297121",
+      appId: "1:117680297121:web:0c4b8f6e0a4a9c9918cce0",
+      measurementId: "G-YRQ71R9NCR"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const storage = firebase.storage();
+
+    function uploadImage() {
+      const fileInput = document.getElementById("fileInput");
+      const file = fileInput.files[0];
+      if (!file) {
+        alert("请先选择一个文件");
+        return;
+      }
+      const fileName = new Date().getTime() + "_" + file.name;
+      const storageRef = storage.ref("images/" + fileName);
+      storageRef.put(file).then(() => {
+        alert("上传成功！");
+        loadImages();
+      }).catch((error) => {
+        alert("上传失败：" + error.message);
+        console.error(error);
+      });
+    }
+
+    function loadImages() {
+      const gallery = document.getElementById("gallery");
+      gallery.innerHTML = "";
+      const listRef = storage.ref("images");
+      listRef.listAll().then((res) => {
+        res.items.forEach((itemRef) => {
+          itemRef.getDownloadURL().then((url) => {
+            const div = document.createElement("div");
+            div.className = "photo";
+            div.innerHTML = `
+              <img src="${url}" alt="photo"/>
+              <button class="delete-btn" onclick="deleteImage('${itemRef.fullPath}')">删除</button>
+            `;
+            gallery.appendChild(div);
+          });
+        });
+      });
+    }
+
+    function deleteImage(path) {
+      if (!confirm("确定要删除这张照片吗？")) return;
+      const imageRef = storage.ref(path);
+      imageRef.delete().then(() => {
+        alert("删除成功！");
+        loadImages();
+      }).catch((error) => {
+        alert("删除失败：" + error.message);
+        console.error(error);
+      });
+    }
+
+    window.onload = loadImages;
+  </script>
+</body>
+</html>
