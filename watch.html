@@ -1,128 +1,153 @@
-
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>线上影院</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin:0; padding:0; background:#fefefe; display:flex; flex-direction:column; height:100vh; }
-    header { background:#ff6699; color:white; text-align:center; padding:10px; font-size:20px; }
-    main { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:10px; overflow-y:auto; }
-    video { max-width:100%; margin:10px 0; background:#000; }
-    .controls { margin:10px; }
-    .chat { width:100%; max-width:600px; border:1px solid #ddd; flex:1; display:flex; flex-direction:column; margin-top:10px; }
-    .chat-messages { flex:1; padding:10px; overflow-y:auto; background:#fafafa; }
-    .chat-input { display:flex; border-top:1px solid #ddd; }
-    .chat-input input { flex:1; padding:8px; border:none; outline:none; }
-    .chat-input button { padding:8px 12px; border:none; background:#ff6699; color:white; cursor:pointer; }
-    .user-list { margin-top:10px; padding:10px; border:1px solid #ddd; width:100%; max-width:600px; background:#fff; }
-    nav { display:flex; justify-content:space-around; background:#ff6699; color:white; padding:10px 0; position:fixed; bottom:0; left:0; width:100%; }
-    nav a { color:white; text-decoration:none; font-size:16px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一起看电影</title>
+<style>
+body { margin:0; font-family:Arial,sans-serif; background:#111; color:#fff; display:flex; flex-direction:column; height:100vh; }
+header { text-align:center; padding:10px; background:#222; font-size:20px; }
+main { flex:1; display:flex; flex-direction:column; align-items:center; padding:10px; overflow-y:auto; }
+video { width:90%; max-width:800px; background:#000; margin-bottom:10px; }
+.controls { margin-bottom:10px; }
+.controls input { width:60%; padding:6px; border-radius:4px; border:none; }
+.controls button { padding:6px 10px; margin-left:5px; border:none; border-radius:4px; background:#ff4081; color:white; cursor:pointer; }
+.chat { width:90%; max-width:800px; background:#1e1e1e; border-radius:5px; display:flex; flex-direction:column; margin-top:10px; }
+.chat-messages { flex:1; padding:10px; overflow-y:auto; }
+.chat-input { display:flex; border-top:1px solid #444; }
+.chat-input input { flex:1; padding:6px; border:none; border-radius:4px; margin-right:5px; }
+.chat-input button { padding:6px 12px; border:none; border-radius:4px; background:#4caf50; color:white; cursor:pointer; }
+.username-box { margin-bottom:5px; }
+footer { display:flex; justify-content:space-around; padding:10px 0; background:#222; }
+footer a { color:#fff; text-decoration:none; }
+.volume-controls { margin:5px 0; }
+.volume-controls label { margin-right:5px; }
+</style>
 </head>
 <body>
-  <header>🎬 我和芳的影院</header>
-  <main>
-    <div class="controls">
-      <input type="text" id="videoURL" placeholder="输入视频链接">
-      <button onclick="loadVideo()">加载视频</button>
+<header>🎬 我和芳的影院</header>
+<main>
+  <div class="controls">
+    <input type="text" id="videoURL" placeholder="输入视频链接(mp4/m3u8)">
+    <button id="loadVideoBtn">加载视频</button>
+  </div>
+  <video id="videoPlayer" controls></video>
+
+  <div class="volume-controls">
+    <label>视频音量</label><input type="range" id="videoVolume" min="0" max="1" step="0.01" value="1">
+  </div>
+  <div class="username-box">
+    <input type="text" id="nickname" placeholder="输入昵称">
+  </div>
+
+  <div class="chat">
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input">
+      <input type="text" id="chatInput" placeholder="输入消息">
+      <button id="sendBtn">发送</button>
     </div>
-    <video id="sharedVideo" controls></video>
+  </div>
+</main>
 
-    <div class="chat">
-      <div class="chat-messages" id="chatMessages"></div>
-      <div class="chat-input">
-        <input type="text" id="nickname" placeholder="昵称">
-        <input type="text" id="chatInput" placeholder="输入消息">
-        <button onclick="sendMessage()">发送</button>
-      </div>
-    </div>
+<footer>
+  <a href="https://miao-murex.vercel.app/">首页</a>
+  <a href="https://miao-murex.vercel.app/letter.html">星空信笺</a>
+  <a href="https://miao-murex.vercel.app/album.html">相册</a>
+  <a href="https://miao-murex.vercel.app/guestbook.html">留言本</a>
+  <a href="https://miao-murex.vercel.app/watch.html">影院</a>
+</footer>
 
-    <div class="user-list">
-      <strong>在线用户:</strong>
-      <ul id="userList"></ul>
-    </div>
-  </main>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-  <nav>
-    <a href="https://miao-murex.vercel.app/">首页</a>
-    <a href="https://miao-murex.vercel.app/letter.html">星空信笺</a>
-    <a href="https://miao-murex.vercel.app/album.html">相册</a>
-    <a href="https://miao-murex.vercel.app/message.html">留言本</a>
-    <a href="https://miao-murex.vercel.app/watch.html">影院</a>
-  </nav>
+const firebaseConfig = {
+  apiKey: "AIzaSyAwmiAqdGejYqG8IvvoWm-nzqGLyj5TQsE",
+  authDomain: "miao-fang.firebaseapp.com",
+  databaseURL: "https://miao-fang-default-rtdb.firebaseio.com",
+  projectId: "miao-fang",
+  storageBucket: "miao-fang.firebasestorage.app",
+  messagingSenderId: "117680297121",
+  appId: "1:117680297121:web:0c4b8f6e0a4a9c9918cce0",
+  measurementId: "G-YRQ71R9NCR"
+};
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAwmiAqdGejYqG8IvvoWm-nzqGLyj5TQsE",
-      authDomain: "miao-fang.firebaseapp.com",
-      databaseURL: "https://miao-fang-default-rtdb.firebaseio.com",
-      projectId: "miao-fang",
-      storageBucket: "miao-fang.firebasestorage.app",
-      messagingSenderId: "117680297121",
-      appId: "1:117680297121:web:0c4b8f6e0a4a9c9918cce0",
-      measurementId: "G-YRQ71R9NCR"
-    };
+const videoRef = ref(db, "watch/video");
+const playRef = ref(db, "watch/playState");
+const messagesRef = ref(db, "watch/chat");
+const usersRef = ref(db, "watch/users");
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+const video = document.getElementById("videoPlayer");
+const videoURLInput = document.getElementById("videoURL");
+const loadVideoBtn = document.getElementById("loadVideoBtn");
+const videoVolumeInput = document.getElementById("videoVolume");
+const chatInput = document.getElementById("chatInput");
+const sendBtn = document.getElementById("sendBtn");
+const nicknameInput = document.getElementById("nickname");
+const chatMessages = document.getElementById("chatMessages");
 
-    const video = document.getElementById('sharedVideo');
-    const videoRef = ref(db, "video");
-    const chatRef = ref(db, "chat");
-    const usersRef = ref(db, "users");
+let userNickname = "";
 
-    function loadVideo() {
-      const url = document.getElementById('videoURL').value;
-      if (url) {
-        set(videoRef, { url });
-      }
+nicknameInput.addEventListener("change", ()=>{ 
+  userNickname = nicknameInput.value || "匿名"; 
+  push(usersRef, { name: userNickname }); 
+});
+
+loadVideoBtn.addEventListener("click", ()=>{
+  const url = videoURLInput.value.trim();
+  if(url) set(videoRef, { url });
+});
+
+onValue(videoRef, (snapshot)=>{
+  const data = snapshot.val();
+  if(data && data.url){
+    const currentTime = video.currentTime;
+    const isPlaying = !video.paused;
+    video.src = data.url;
+    video.currentTime = currentTime;
+    if(isPlaying) video.play();
+  }
+});
+
+// 播放/暂停同步
+video.addEventListener("play", ()=>{ set(playRef, { playing:true, time: video.currentTime }); });
+video.addEventListener("pause", ()=>{ set(playRef, { playing:false, time: video.currentTime }); });
+
+onValue(playRef, (snapshot)=>{
+  const state = snapshot.val();
+  if(state){
+    if(state.playing && video.paused){
+      video.currentTime = state.time;
+      video.play();
     }
-
-    onChildAdded(videoRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && data.url) {
-        video.src = data.url;
-      }
-    });
-
-    function sendMessage() {
-      const input = document.getElementById('chatInput');
-      const nickname = document.getElementById('nickname').value || "匿名";
-      if (input.value.trim() !== "") {
-        const msg = { name: nickname, text: input.value, time: new Date().toLocaleTimeString() };
-        push(chatRef, msg);
-        input.value = "";
-      }
+    if(!state.playing && !video.paused){
+      video.pause();
+      video.currentTime = state.time;
     }
+  }
+});
 
-    onChildAdded(chatRef, (snapshot) => {
-      const msg = snapshot.val();
-      const messagesDiv = document.getElementById('chatMessages');
-      const div = document.createElement("div");
-      div.textContent = `[${msg.time}] ${msg.name}: ${msg.text}`;
-      messagesDiv.appendChild(div);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    });
+videoVolumeInput.addEventListener("input", ()=>{ video.volume = videoVolumeInput.value; });
 
-    // 用户列表
-    const nicknameInput = document.getElementById("nickname");
-    nicknameInput.addEventListener("change", () => {
-      const name = nicknameInput.value || "匿名";
-      push(usersRef, { name });
-    });
+// 聊天功能
+sendBtn.addEventListener("click", ()=>{
+  const msg = chatInput.value.trim();
+  if(msg){
+    push(messagesRef, { name: userNickname || "匿名", text: msg, time: new Date().toLocaleTimeString() });
+    chatInput.value = "";
+  }
+});
 
-    onChildAdded(usersRef, (snapshot) => {
-      const user = snapshot.val();
-      const userList = document.getElementById("userList");
-      const li = document.createElement("li");
-      li.textContent = user.name;
-      userList.appendChild(li);
-    });
-  </script>
+onChildAdded(messagesRef, (snapshot)=>{
+  const msg = snapshot.val();
+  const div = document.createElement("div");
+  div.textContent = `[${msg.time}] ${msg.name}: ${msg.text}`;
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+});
+</script>
 </body>
 </html>
