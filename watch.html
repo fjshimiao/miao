@@ -7,45 +7,54 @@
 <style>
 body { margin:0; font-family:Arial,sans-serif; background:#111; color:#fff; display:flex; flex-direction:column; height:100vh; }
 header { text-align:center; padding:10px; background:#222; font-size:20px; }
-main { flex:1; display:flex; flex-direction:column; align-items:center; padding:10px; overflow-y:auto; }
-video { width:90%; max-width:800px; background:#000; margin-bottom:10px; }
+main { flex:1; display:flex; flex-direction:row; padding:10px; overflow-y:auto; }
+.left-panel { flex:3; display:flex; flex-direction:column; align-items:center; }
+video { width:100%; max-width:800px; background:#000; margin-bottom:10px; }
 .controls { margin-bottom:10px; }
 .controls input { width:60%; padding:6px; border-radius:4px; border:none; }
 .controls button { padding:6px 10px; margin-left:5px; border:none; border-radius:4px; background:#ff4081; color:white; cursor:pointer; }
-.chat { width:90%; max-width:800px; background:#1e1e1e; border-radius:5px; display:flex; flex-direction:column; margin-top:10px; }
+.chat { width:100%; max-width:800px; background:#1e1e1e; border-radius:5px; display:flex; flex-direction:column; margin-top:10px; }
 .chat-messages { flex:1; padding:10px; overflow-y:auto; }
 .chat-input { display:flex; border-top:1px solid #444; }
 .chat-input input { flex:1; padding:6px; border:none; border-radius:4px; margin-right:5px; }
 .chat-input button { padding:6px 12px; border:none; border-radius:4px; background:#4caf50; color:white; cursor:pointer; }
 .username-box { margin-bottom:5px; }
-footer { display:flex; justify-content:space-around; padding:10px 0; background:#222; }
-footer a { color:#fff; text-decoration:none; }
 .volume-controls { margin:5px 0; }
 .volume-controls label { margin-right:5px; }
+.right-panel { flex:1; margin-left:10px; background:#1e1e1e; border-radius:5px; padding:10px; }
+.user-list { max-height:400px; overflow-y:auto; }
+.user-list div { padding:4px 0; border-bottom:1px solid #444; }
+footer { display:flex; justify-content:space-around; padding:10px 0; background:#222; flex-shrink:0; }
+footer a { color:#fff; text-decoration:none; }
 </style>
 </head>
 <body>
 <header>🎬 我和芳的影院</header>
 <main>
-  <div class="controls">
-    <input type="text" id="videoURL" placeholder="输入视频链接(mp4/m3u8)">
-    <button id="loadVideoBtn">加载视频</button>
-  </div>
-  <video id="videoPlayer" controls></video>
-
-  <div class="volume-controls">
-    <label>视频音量</label><input type="range" id="videoVolume" min="0" max="1" step="0.01" value="1">
-  </div>
-  <div class="username-box">
-    <input type="text" id="nickname" placeholder="输入昵称">
-  </div>
-
-  <div class="chat">
-    <div class="chat-messages" id="chatMessages"></div>
-    <div class="chat-input">
-      <input type="text" id="chatInput" placeholder="输入消息">
-      <button id="sendBtn">发送</button>
+  <div class="left-panel">
+    <div class="controls">
+      <input type="text" id="videoURL" placeholder="输入视频链接(mp4/m3u8)">
+      <button id="loadVideoBtn">加载视频</button>
     </div>
+    <video id="videoPlayer" controls></video>
+    <div class="volume-controls">
+      <label>视频音量</label><input type="range" id="videoVolume" min="0" max="1" step="0.01" value="1">
+    </div>
+    <div class="username-box">
+      <input type="text" id="nickname" placeholder="输入昵称">
+    </div>
+    <div class="chat">
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="输入消息">
+        <button id="sendBtn">发送</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <h3>在线用户</h3>
+    <div class="user-list" id="userList"></div>
   </div>
 </main>
 
@@ -59,7 +68,7 @@ footer a { color:#fff; text-decoration:none; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, set, onValue, get, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAwmiAqdGejYqG8IvvoWm-nzqGLyj5TQsE",
@@ -88,48 +97,77 @@ const chatInput = document.getElementById("chatInput");
 const sendBtn = document.getElementById("sendBtn");
 const nicknameInput = document.getElementById("nickname");
 const chatMessages = document.getElementById("chatMessages");
+const userListDiv = document.getElementById("userList");
 
 let userNickname = "";
+let userKey = null;
 
+// 用户输入昵称
 nicknameInput.addEventListener("change", ()=>{ 
   userNickname = nicknameInput.value || "匿名"; 
-  push(usersRef, { name: userNickname }); 
+  if(!userKey){
+    userKey = push(usersRef, { name: userNickname }).key;
+  } else {
+    set(ref(db, "watch/users/" + userKey), { name: userNickname });
+  }
 });
 
+// 加载视频
 loadVideoBtn.addEventListener("click", ()=>{
   const url = videoURLInput.value.trim();
   if(url) set(videoRef, { url });
 });
 
-onValue(videoRef, (snapshot)=>{
+// 视频加载 + 自动跟随播放状态
+onValue(videoRef, async (snapshot)=>{
   const data = snapshot.val();
   if(data && data.url){
-    const currentTime = video.currentTime;
-    const isPlaying = !video.paused;
+    const oldTime = video.currentTime;
+    const wasPaused = video.paused;
     video.src = data.url;
-    video.currentTime = currentTime;
-    if(isPlaying) video.play();
+
+    video.addEventListener('loadedmetadata', async function initVideo(){
+      const stateSnapshot = await get(playRef);
+      const state = stateSnapshot.val();
+      if(state){
+        video.currentTime = state.time || 0;
+        if(state.playing) video.play();
+        else video.pause();
+      } else {
+        video.currentTime = oldTime;
+        if(!wasPaused) video.play();
+      }
+      video.removeEventListener('loadedmetadata', initVideo);
+    });
   }
 });
 
-// 播放/暂停同步
-video.addEventListener("play", ()=>{ set(playRef, { playing:true, time: video.currentTime }); });
-video.addEventListener("pause", ()=>{ set(playRef, { playing:false, time: video.currentTime }); });
-
+// 防抖动自动校准
 onValue(playRef, (snapshot)=>{
   const state = snapshot.val();
   if(state){
-    if(state.playing && video.paused){
-      video.currentTime = state.time;
-      video.play();
-    }
-    if(!state.playing && !video.paused){
+    const localTime = video.currentTime;
+    const diff = Math.abs(localTime - state.time);
+
+    if(diff > 0.5){ 
       video.pause();
       video.currentTime = state.time;
+      video.addEventListener('seeked', function playAfterSeek(){
+        if(state.playing) video.play();
+        video.removeEventListener('seeked', playAfterSeek);
+      });
+    } else {
+      if(state.playing && video.paused) video.play();
+      if(!state.playing && !video.paused) video.pause();
     }
   }
 });
 
+// 播放/暂停更新数据库
+video.addEventListener("play", ()=>{ set(playRef, { playing:true, time: video.currentTime }); });
+video.addEventListener("pause", ()=>{ set(playRef, { playing:false, time: video.currentTime }); });
+
+// 视频音量
 videoVolumeInput.addEventListener("input", ()=>{ video.volume = videoVolumeInput.value; });
 
 // 聊天功能
@@ -147,6 +185,24 @@ onChildAdded(messagesRef, (snapshot)=>{
   div.textContent = `[${msg.time}] ${msg.name}: ${msg.text}`;
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+});
+
+// 在线用户列表
+onValue(usersRef, (snapshot)=>{
+  const users = snapshot.val() || {};
+  userListDiv.innerHTML = "";
+  Object.values(users).forEach(u=>{
+    const div = document.createElement("div");
+    div.textContent = u.name;
+    userListDiv.appendChild(div);
+  });
+});
+
+// 用户离开时移除
+window.addEventListener("beforeunload", ()=>{
+  if(userKey){
+    remove(ref(db, "watch/users/" + userKey));
+  }
 });
 </script>
 </body>
