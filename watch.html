@@ -1,0 +1,128 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>线上影院</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; padding:0; background:#fefefe; display:flex; flex-direction:column; height:100vh; }
+    header { background:#ff6699; color:white; text-align:center; padding:10px; font-size:20px; }
+    main { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:10px; overflow-y:auto; }
+    video { max-width:100%; margin:10px 0; background:#000; }
+    .controls { margin:10px; }
+    .chat { width:100%; max-width:600px; border:1px solid #ddd; flex:1; display:flex; flex-direction:column; margin-top:10px; }
+    .chat-messages { flex:1; padding:10px; overflow-y:auto; background:#fafafa; }
+    .chat-input { display:flex; border-top:1px solid #ddd; }
+    .chat-input input { flex:1; padding:8px; border:none; outline:none; }
+    .chat-input button { padding:8px 12px; border:none; background:#ff6699; color:white; cursor:pointer; }
+    .user-list { margin-top:10px; padding:10px; border:1px solid #ddd; width:100%; max-width:600px; background:#fff; }
+    nav { display:flex; justify-content:space-around; background:#ff6699; color:white; padding:10px 0; position:fixed; bottom:0; left:0; width:100%; }
+    nav a { color:white; text-decoration:none; font-size:16px; }
+  </style>
+</head>
+<body>
+  <header>🎬 我和芳的影院</header>
+  <main>
+    <div class="controls">
+      <input type="text" id="videoURL" placeholder="输入视频链接">
+      <button onclick="loadVideo()">加载视频</button>
+    </div>
+    <video id="sharedVideo" controls></video>
+
+    <div class="chat">
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input">
+        <input type="text" id="nickname" placeholder="昵称">
+        <input type="text" id="chatInput" placeholder="输入消息">
+        <button onclick="sendMessage()">发送</button>
+      </div>
+    </div>
+
+    <div class="user-list">
+      <strong>在线用户:</strong>
+      <ul id="userList"></ul>
+    </div>
+  </main>
+
+  <nav>
+    <a href="https://miao-murex.vercel.app/">首页</a>
+    <a href="https://miao-murex.vercel.app/letter.html">星空信笺</a>
+    <a href="https://miao-murex.vercel.app/album.html">相册</a>
+    <a href="https://miao-murex.vercel.app/message.html">留言本</a>
+    <a href="https://miao-murex.vercel.app/watch.html">影院</a>
+  </nav>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAwmiAqdGejYqG8IvvoWm-nzqGLyj5TQsE",
+      authDomain: "miao-fang.firebaseapp.com",
+      databaseURL: "https://miao-fang-default-rtdb.firebaseio.com",
+      projectId: "miao-fang",
+      storageBucket: "miao-fang.firebasestorage.app",
+      messagingSenderId: "117680297121",
+      appId: "1:117680297121:web:0c4b8f6e0a4a9c9918cce0",
+      measurementId: "G-YRQ71R9NCR"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const video = document.getElementById('sharedVideo');
+    const videoRef = ref(db, "video");
+    const chatRef = ref(db, "chat");
+    const usersRef = ref(db, "users");
+
+    function loadVideo() {
+      const url = document.getElementById('videoURL').value;
+      if (url) {
+        set(videoRef, { url });
+      }
+    }
+
+    onChildAdded(videoRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && data.url) {
+        video.src = data.url;
+      }
+    });
+
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const nickname = document.getElementById('nickname').value || "匿名";
+      if (input.value.trim() !== "") {
+        const msg = { name: nickname, text: input.value, time: new Date().toLocaleTimeString() };
+        push(chatRef, msg);
+        input.value = "";
+      }
+    }
+
+    onChildAdded(chatRef, (snapshot) => {
+      const msg = snapshot.val();
+      const messagesDiv = document.getElementById('chatMessages');
+      const div = document.createElement("div");
+      div.textContent = `[${msg.time}] ${msg.name}: ${msg.text}`;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
+    // 用户列表
+    const nicknameInput = document.getElementById("nickname");
+    nicknameInput.addEventListener("change", () => {
+      const name = nicknameInput.value || "匿名";
+      push(usersRef, { name });
+    });
+
+    onChildAdded(usersRef, (snapshot) => {
+      const user = snapshot.val();
+      const userList = document.getElementById("userList");
+      const li = document.createElement("li");
+      li.textContent = user.name;
+      userList.appendChild(li);
+    });
+  </script>
+</body>
+</html>
