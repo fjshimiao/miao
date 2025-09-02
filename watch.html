@@ -1,357 +1,228 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>一起看电影 — 受保护页面</title>
-<style>
-  :root{--bg:#111;--panel:#1e1e1e;--accent:#ff4081;--muted:#444;--text:#fff}
-  html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
-  /* 隐藏主内容直到解锁 */
-  #app{display:none;height:100%;flex-direction:column}
-  header{background:#222;padding:10px;text-align:center;font-size:20px}
-  main{flex:1;display:flex;flex-direction:row;padding:10px;overflow:auto}
-  .left-panel{flex:3;display:flex;flex-direction:column;align-items:center}
-  video{width:100%;max-width:800px;background:#000;margin-bottom:10px}
-  .controls{margin-bottom:10px}
-  .controls input{width:60%;padding:6px;border-radius:4px;border:none}
-  .controls button{padding:6px 10px;margin-left:5px;border:none;border-radius:4px;background:var(--accent);color:#fff;cursor:pointer}
-  .chat{width:100%;max-width:800px;background:var(--panel);border-radius:6px;display:flex;flex-direction:column;margin-top:10px}
-  .chat-messages{flex:1;padding:10px;overflow:auto}
-  .chat-input{display:flex;border-top:1px solid var(--muted)}
-  .chat-input input{flex:1;padding:6px;border:none;border-radius:4px;margin-right:5px;background:#2a2a2a;color:#fff}
-  .chat-input button{padding:6px 12px;border:none;border-radius:4px;background:#4caf50;color:white;cursor:pointer}
-  .username-box{margin-bottom:8px}
-  .volume-controls{margin:5px 0}
-  .volume-controls label{margin-right:5px}
-  .right-panel{flex:1;margin-left:10px;background:var(--panel);border-radius:6px;padding:10px}
-  .user-list{max-height:400px;overflow:auto}
-  .user-list div{padding:6px 4px;border-bottom:1px solid var(--muted)}
-  footer{display:flex;justify-content:space-around;padding:10px 0;background:#222;flex-shrink:0}
-  footer a{color:#fff;text-decoration:none}
+  <meta charset="UTF-8">
+  <title>一起看电影</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
 
-  /* 密码遮罩 */
-  #lockOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999}
-  .lockBox{background:#161616;padding:24px;border-radius:8px;min-width:320px;max-width:90%;box-shadow:0 8px 30px rgba(0,0,0,0.6);text-align:center}
-  .lockBox h2{margin:0 0 12px;font-size:18px;color:var(--text)}
-  .lockBox input{width:100%;padding:10px;border-radius:6px;border:1px solid #333;background:#0f0f0f;color:#fff;margin-bottom:10px;box-sizing:border-box}
-  .lockBox button{padding:8px 12px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer}
-  .lockBox .msg{color:#f88;margin-top:8px;height:18px;font-size:13px}
-  .unlock-info{font-size:12px;color:#aaa;margin-top:8px}
+    #video-container {
+      position: relative;
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: black;
+    }
 
-  /* 登出按钮 */
-  #logoutBtn{position:fixed;top:12px;right:12px;padding:6px 10px;border-radius:6px;border:none;background:#444;color:#fff;cursor:pointer;z-index:2000;display:none}
-</style>
+    video {
+      max-width: 100%;
+      max-height: 100%;
+      background: black;
+    }
+
+    #chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 300px;
+      border-top: 2px solid #333;
+      background: #222;
+    }
+
+    #users {
+      padding: 5px 10px;
+      border-bottom: 1px solid #444;
+      font-size: 14px;
+      color: #ccc;
+    }
+
+    #chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    #chat-input {
+      display: flex;
+      border-top: 1px solid #444;
+    }
+
+    #chat-input input {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      outline: none;
+    }
+
+    #chat-input button {
+      background: #ff69b4;
+      border: none;
+      padding: 8px 15px;
+      color: white;
+      cursor: pointer;
+    }
+
+    /* 全屏聊天浮层 */
+    #chat-overlay {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      width: 30%;
+      max-height: 50%;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 8px;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #chat-messages-overlay {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      font-size: 14px;
+    }
+
+    #chat-input-overlay {
+      display: flex;
+      border-top: 1px solid #444;
+    }
+
+    #chat-input-overlay input {
+      flex: 1;
+      padding: 6px;
+      border: none;
+      outline: none;
+    }
+
+    #chat-input-overlay button {
+      background: #ff69b4;
+      border: none;
+      color: white;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-  <!-- 密码遮罩 -->
-  <div id="lockOverlay" aria-hidden="false">
-    <div class="lockBox" role="dialog" aria-modal="true" aria-labelledby="lockTitle">
-      <h2 id="lockTitle">请输入访问密码</h2>
-      <input id="passwordInput" type="password" placeholder="输入密码" aria-label="页面访问密码" />
-      <div style="display:flex;gap:8px;justify-content:center">
-        <button id="unlockBtn">解锁</button>
-        <button id="clearBtn" style="background:#666">清除</button>
+  <div id="video-container">
+    <video id="video" controls>
+      <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+      你的浏览器不支持 HTML5 视频。
+    </video>
+
+    <!-- 全屏聊天浮层 -->
+    <div id="chat-overlay">
+      <div id="chat-messages-overlay"></div>
+      <div id="chat-input-overlay">
+        <input type="text" id="overlayMessageInput" placeholder="输入消息...">
+        <button id="overlaySendBtn">发送</button>
       </div>
-      <div class="msg" id="lockMsg"></div>
-      <div class="unlock-info">提示：会话内记住密码，关闭页面后需重新输入。</div>
     </div>
   </div>
 
-  <!-- 登出 -->
-  <button id="logoutBtn">登出</button>
-
-  <!-- 主应用（默认隐藏，解锁后显示） -->
-  <div id="app">
-    <header>🎬 我和芳的影院（受保护）</header>
-    <main>
-      <div class="left-panel">
-        <div class="controls">
-          <input type="text" id="videoURL" placeholder="输入视频链接(mp4/m3u8)">
-          <button id="loadVideoBtn">加载视频</button>
-        </div>
-        <video id="videoPlayer" controls></video>
-        <div class="volume-controls">
-          <label>视频音量</label>
-          <input type="range" id="videoVolume" min="0" max="1" step="0.01" value="1">
-        </div>
-        <div class="username-box">
-          <input type="text" id="nickname" placeholder="输入昵称">
-        </div>
-        <div class="chat">
-          <div class="chat-messages" id="chatMessages"></div>
-          <div class="chat-input">
-            <input type="text" id="chatInput" placeholder="输入消息">
-            <button id="sendBtn">发送</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="right-panel">
-        <h3>在线用户</h3>
-        <div class="user-list" id="userList"></div>
-      </div>
-    </main>
-
-    <footer>
-      <a href="https://miao-murex.vercel.app/">首页</a>
-      <a href="https://miao-murex.vercel.app/letter.html">星空信笺</a>
-      <a href="https://miao-murex.vercel.app/album.html">相册</a>
-      <a href="https://miao-murex.vercel.app/guestbook.html">留言本</a>
-      <a href="https://miao-murex.vercel.app/watch.html">影院</a>
-    </footer>
+  <!-- 正常模式聊天区 -->
+  <div id="chat-container">
+    <div id="users">在线用户：</div>
+    <div id="chat-messages"></div>
+    <div id="chat-input">
+      <input type="text" id="messageInput" placeholder="输入消息...">
+      <button id="sendBtn">发送</button>
+    </div>
   </div>
 
-<script>
-/*
-  客户端简单密码保护：
-  - 密码常量在客户端（fm0328）
-  - 成功后用 sessionStorage 记住登录状态
-  - 未登录时不加载 Firebase（避免未授权访问）
-*/
+  <script>
+    // 🔹 Firebase 配置
+    const firebaseConfig = {
+      apiKey: "AIzaSyAwmiAqdGejYqG8IvvoWm-nzqGLyj5TQsE",
+      authDomain: "miao-fang.firebaseapp.com",
+      databaseURL: "https://miao-fang-default-rtdb.firebaseio.com",
+      projectId: "miao-fang",
+      storageBucket: "miao-fang.firebasestorage.app",
+      messagingSenderId: "117680297121",
+      appId: "1:117680297121:web:0c4b8f6e0a4a9c9918cce0"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-const CORRECT_PASSWORD = "fm0328";
-const unlockBtn = document.getElementById('unlockBtn');
-const clearBtn = document.getElementById('clearBtn');
-const passwordInput = document.getElementById('passwordInput');
-const lockMsg = document.getElementById('lockMsg');
-const lockOverlay = document.getElementById('lockOverlay');
-const app = document.getElementById('app');
-const logoutBtn = document.getElementById('logoutBtn');
+    // 🔹 用户名随机生成
+    const username = "用户" + Math.floor(Math.random() * 1000);
 
-function showLock(msg = "") {
-  lockOverlay.style.display = "flex";
-  lockOverlay.setAttribute('aria-hidden','false');
-  app.style.display = "none";
-  logoutBtn.style.display = "none";
-  lockMsg.textContent = msg;
-}
+    // 🔹 进入页面清空聊天与用户
+    db.ref("chat").remove();
+    db.ref("users").remove();
 
-function hideLock() {
-  lockOverlay.style.display = "none";
-  lockOverlay.setAttribute('aria-hidden','true');
-  app.style.display = "flex";
-  logoutBtn.style.display = "inline-block";
-}
+    // 🔹 注册用户
+    const userRef = db.ref("users").push(username);
+    userRef.onDisconnect().remove();
 
-// 检查 session
-if (sessionStorage.getItem('watch_authed') === "1") {
-  // 已认证：直接初始化应用
-  hideLock();
-  initializeProtectedApp();
-} else {
-  showLock();
-  passwordInput.focus();
-}
-
-// 解锁逻辑
-unlockBtn.addEventListener('click', attemptUnlock);
-passwordInput.addEventListener('keypress', (e)=>{ if(e.key==='Enter') attemptUnlock(); });
-clearBtn.addEventListener('click', ()=>{
-  passwordInput.value = "";
-  lockMsg.textContent = "";
-  passwordInput.focus();
-});
-
-logoutBtn.addEventListener('click', ()=>{
-  sessionStorage.removeItem('watch_authed');
-  // 简单刷新页面回到锁定界面
-  window.location.reload();
-});
-
-function attemptUnlock(){
-  const v = passwordInput.value || "";
-  if (v === CORRECT_PASSWORD) {
-    sessionStorage.setItem('watch_authed', "1");
-    hideLock();
-    // 延迟初始化以确保 DOM 就绪
-    setTimeout(()=>initializeProtectedApp(), 50);
-  } else {
-    lockMsg.textContent = "密码错误，请重试。";
-    passwordInput.value = "";
-    passwordInput.focus();
-  }
-}
-
-/* ========== 下面开始受保护的应用初始化函数 ==========
-   我们动态导入 Firebase 并绑定所有事件 — 只有在解锁后才运行
-*/
-async function initializeProtectedApp(){
-  // 动态导入 firebase 模块（避免未授权用户加载）
-  const modApp = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
-  const modDb = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
-  const { initializeApp } = modApp;
-  const { getDatabase, ref, push, onChildAdded, set, onValue, get, remove } = modDb;
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyAwmiAqdGejYqG8IvvoWm-nzqGLyj5TQsE",
-    authDomain: "miao-fang.firebaseapp.com",
-    databaseURL: "https://miao-fang-default-rtdb.firebaseio.com",
-    projectId: "miao-fang",
-    storageBucket: "miao-fang.firebasestorage.app",
-    messagingSenderId: "117680297121",
-    appId: "1:117680297121:web:0c4b8f6e0a4a9c9918cce0",
-    measurementId: "G-YRQ71R9NCR"
-  };
-
-  const appInstance = initializeApp(firebaseConfig);
-  const db = getDatabase(appInstance);
-
-  const videoRef = ref(db, "watch/video");
-  const playRef = ref(db, "watch/playState");
-  const messagesRef = ref(db, "watch/chat");
-  const usersRef = ref(db, "watch/users");
-
-  // DOM 元素
-  const video = document.getElementById("videoPlayer");
-  const videoURLInput = document.getElementById("videoURL");
-  const loadVideoBtn = document.getElementById("loadVideoBtn");
-  const videoVolumeInput = document.getElementById("videoVolume");
-  const chatInput = document.getElementById("chatInput");
-  const sendBtn = document.getElementById("sendBtn");
-  const nicknameInput = document.getElementById("nickname");
-  const chatMessages = document.getElementById("chatMessages");
-  const userListDiv = document.getElementById("userList");
-
-  let userNickname = "";
-  let userKey = null;
-
-  // 昵称输入并注册在线用户
-  nicknameInput.addEventListener("change", ()=>{ 
-    userNickname = nicknameInput.value || "匿名"; 
-    if(!userKey){
-      userKey = push(usersRef, { name: userNickname }).key;
-    } else {
-      set(ref(db, "watch/users/" + userKey), { name: userNickname });
-    }
-  });
-
-  // 加载视频（将链接写入数据库）
-  loadVideoBtn.addEventListener("click", ()=>{
-    const url = videoURLInput.value.trim();
-    if(url) set(videoRef, { url });
-  });
-
-  // 视频加载 + 新用户自动跟随播放状态（在 loadedmetadata 后设置 time & play）
-  onValue(videoRef, async (snapshot)=>{
-    const data = snapshot.val();
-    if(data && data.url){
-      const oldTime = video.currentTime;
-      const wasPaused = video.paused;
-      // 只更改 src（浏览器会缓冲）
-      video.src = data.url;
-
-      function initVideo(){
-        // read play state
-        get(playRef).then(stateSnapshot=>{
-          const state = stateSnapshot.val();
-          if(state){
-            // 设置时间并跟随播放状态
-            video.currentTime = state.time || 0;
-            if(state.playing){
-              // 尝试播放（浏览器可能要求用户交互；这是最好的尝试）
-              const p = video.play();
-              if(p && p.catch) p.catch(()=>{/* 静默失败（浏览器策略） */});
-            } else {
-              video.pause();
-            }
-          } else {
-            // 没有 play 状态，保留本地播放意图
-            video.currentTime = oldTime;
-            if(!wasPaused){
-              const p = video.play();
-              if(p && p.catch) p.catch(()=>{});
-            }
-          }
-        }).catch(()=>{/* ignore */});
-        video.removeEventListener('loadedmetadata', initVideo);
-      }
-
-      video.addEventListener('loadedmetadata', initVideo);
-    }
-  });
-
-  // 防抖动自动校准（只在明显偏差时跳转并在 seeked 后播放）
-  onValue(playRef, (snapshot)=>{
-    const state = snapshot.val();
-    if(state){
-      const localTime = video.currentTime || 0;
-      const diff = Math.abs(localTime - (state.time || 0));
-      if(diff > 0.5){
-        video.pause();
-        // some browsers won't allow setting currentTime until metadata loaded; assume loaded
-        try {
-          video.currentTime = state.time || 0;
-        } catch(e){
-          // ignore errors; will attempt again on loadedmetadata
-        }
-        function playAfterSeek(){
-          if(state.playing){
-            const p = video.play();
-            if(p && p.catch) p.catch(()=>{});
-          }
-          video.removeEventListener('seeked', playAfterSeek);
-        }
-        video.addEventListener('seeked', playAfterSeek);
-      } else {
-        if(state.playing && video.paused){
-          const p = video.play();
-          if(p && p.catch) p.catch(()=>{});
-        }
-        if(!state.playing && !video.paused){
-          video.pause();
-        }
-      }
-    }
-  });
-
-  // 本地播放/暂停事件上报到数据库
-  video.addEventListener("play", ()=>{ set(playRef, { playing:true, time: video.currentTime }); });
-  video.addEventListener("pause", ()=>{ set(playRef, { playing:false, time: video.currentTime }); });
-
-  // 视频音量
-  videoVolumeInput.addEventListener("input", ()=>{ video.volume = videoVolumeInput.value; });
-
-  // 聊天功能
-  sendBtn.addEventListener("click", ()=>{
-    const msg = chatInput.value.trim();
-    if(msg){
-      push(messagesRef, { name: userNickname || "匿名", text: msg, time: new Date().toLocaleTimeString() });
-      chatInput.value = "";
-    }
-  });
-  chatInput.addEventListener('keypress', (e)=>{ if(e.key==='Enter') sendBtn.click(); });
-
-  onChildAdded(messagesRef, (snapshot)=>{
-    const msg = snapshot.val();
-    const div = document.createElement("div");
-    div.textContent = `[${msg.time}] ${msg.name}: ${msg.text}`;
-    chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  });
-
-  // 在线用户列表（实时）
-  onValue(usersRef, (snapshot)=>{
-    const users = snapshot.val() || {};
-    userListDiv.innerHTML = "";
-    // 保持插入顺序 — 使用 entries
-    Object.entries(users).forEach(([k,u])=>{
-      const div = document.createElement("div");
-      div.textContent = u.name || "匿名";
-      userListDiv.appendChild(div);
+    // 🔹 在线用户显示
+    db.ref("users").on("value", snapshot => {
+      const users = snapshot.val() || {};
+      document.getElementById("users").innerText = "在线用户：" + Object.values(users).join(", ");
     });
-  });
 
-  // 离开时从在线列表删除（尽量尝试）
-  window.addEventListener("beforeunload", ()=>{
-    if(userKey){
-      remove(ref(db, "watch/users/" + userKey)).catch(()=>{/* nothing */});
+    // 🔹 显示消息（普通模式）
+    function addMessage(user, text) {
+      const msgDiv = document.createElement("div");
+      msgDiv.textContent = `${user}: ${text}`;
+      document.getElementById("chat-messages").appendChild(msgDiv);
+      document.getElementById("chat-messages").scrollTop = document.getElementById("chat-messages").scrollHeight;
     }
-  });
 
-  // 显示登出按钮（在解锁后）
-  logoutBtn.style.display = "inline-block";
-}
-</script>
+    // 🔹 显示消息（浮层模式）
+    function addOverlayMessage(user, text) {
+      const msgDiv = document.createElement("div");
+      msgDiv.textContent = `${user}: ${text}`;
+      document.getElementById("chat-messages-overlay").appendChild(msgDiv);
+      document.getElementById("chat-messages-overlay").scrollTop = document.getElementById("chat-messages-overlay").scrollHeight;
+    }
+
+    // 🔹 发送消息（普通模式）
+    document.getElementById("sendBtn").addEventListener("click", () => {
+      const text = document.getElementById("messageInput").value.trim();
+      if (!text) return;
+      db.ref("chat").push({ user: username, text: text, timestamp: Date.now() });
+      document.getElementById("messageInput").value = "";
+    });
+
+    // 🔹 发送消息（全屏模式）
+    document.getElementById("overlaySendBtn").addEventListener("click", () => {
+      const text = document.getElementById("overlayMessageInput").value.trim();
+      if (!text) return;
+      db.ref("chat").push({ user: username, text: text, timestamp: Date.now() });
+      document.getElementById("overlayMessageInput").value = "";
+    });
+
+    // 🔹 接收消息
+    db.ref("chat").on("child_added", snapshot => {
+      const data = snapshot.val();
+      addMessage(data.user, data.text);
+      addOverlayMessage(data.user, data.text);
+    });
+
+    // 🔹 全屏事件监听
+    const video = document.getElementById("video");
+    const chatOverlay = document.getElementById("chat-overlay");
+
+    document.addEventListener("fullscreenchange", () => {
+      if (document.fullscreenElement === video || video.contains(document.fullscreenElement)) {
+        chatOverlay.style.display = "flex"; // 全屏时显示
+      } else {
+        chatOverlay.style.display = "none"; // 退出全屏隐藏
+      }
+    });
+  </script>
 </body>
 </html>
