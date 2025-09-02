@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>我们的相册</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Arial", sans-serif;
+      background: #fffafc;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    h1 {
+      text-align: center;
+      color: #d63384;
+      margin: 20px 0;
+    }
+    #photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      padding: 10px;
+      flex-grow: 1;
+    }
+    #photo-grid img {
+      width: 100%;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+    footer {
+      background-color: #f8d7e5;
+      text-align: center;
+      padding: 10px 0;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+    }
+    footer a {
+      margin: 0 15px;
+      text-decoration: none;
+      color: #d63384;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>我们的相册</h1>
+  <div id="photo-grid"></div>
+  <footer>
+    <a href="index.html">首页</a>
+    <a href="letter.html">星空信笺</a>
+    <a href="album.html">相册</a>
+    <a href="guestbook.html">留言本</a>
+  </footer>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getStorage, ref, listAll, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAwmiAqdGejYqG8IvvoWm-nzqGLyj5TQsE",
+      authDomain: "miao-fang.firebaseapp.com",
+      projectId: "miao-fang",
+      storageBucket: "miao-fang.appspot.com",
+      messagingSenderId: "117680297121",
+      appId: "1:117680297121:web:0c4b8f6e0a4a9c9918cce0",
+      measurementId: "G-YRQ71R9NCR"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const storage = getStorage(app);
+    const listRef = ref(storage, 'album');
+
+    const photoGrid = document.getElementById("photo-grid");
+    listAll(listRef)
+      .then((res) => {
+        res.items.forEach((itemRef) => {
+          getDownloadURL(itemRef).then((url) => {
+            const img = document.createElement("img");
+            img.src = url;
+            photoGrid.appendChild(img);
+          });
+        });
+      })
+      .catch((error) => {
+        console.error("图片加载失败", error);
+      });
+  </script>
+</body>
+</html>
