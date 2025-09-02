@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>一言一语皆为爱</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>一言一语皆为爱</h1>
+<div class="message-board">
+  <h2>爱心留言</h2>
+  <input type="text" id="nickname" placeholder="你的昵称" />
+  <textarea id="content" rows="4" placeholder="写下你的留言..."></textarea>
+  <button onclick="sendMessage()">发射爱心</button>
+  <div id="messages"></div>
+</div>
+<!-- 导航栏 -->
+<div id="navbar-placeholder"></div>
+<script>
+fetch('navbar.html').then(res=>res.text()).then(html=>{document.getElementById('navbar-placeholder').innerHTML=html;});
+</script>
+</body>
+</html>

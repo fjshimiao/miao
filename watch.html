@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>一起看电影 — 受保护页面</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- 主应用内容保持不动 -->
+<div id="app">
+  <header>🎬 我和芳的影院（受保护）</header>
+  <main>
+    <!-- 视频和聊天板块 -->
+  </main>
+  <!-- 导航栏 -->
+  <div id="navbar-placeholder"></div>
+  <script>
+    fetch('navbar.html').then(res=>res.text()).then(html=>{document.getElementById('navbar-placeholder').innerHTML=html;});
+  </script>
+</div>
+</body>
+</html>
